@@ -285,3 +285,38 @@ Future<List<Map<String, String>>> getOpenFuturesPositions() async {
     return [{}];
   }
 }
+
+String generateSignature2(String data, String secret) {
+  var key = utf8.encode(secret);
+  var bytes = utf8.encode(data);
+
+  var hmacSha256 = Hmac(sha256, key); // HMAC-SHA256
+  var digest = hmacSha256.convert(bytes);
+
+  return digest.toString();
+}
+
+Future<String> getFuturesAccountMargin() async {
+  var endpoint = 'https://testnet.binancefuture.co/fapi/v2/account';
+  var timestamp = DateTime.now().millisecondsSinceEpoch;
+
+  var queryString = 'timestamp=$timestamp';
+  var signature = generateSignature2(queryString, apiSecret);
+
+  var headers = {
+    'X-MBX-APIKEY': apiKey,
+  };
+
+  var uri = Uri.parse('$endpoint?$queryString&signature=$signature');
+  var response = await http.get(uri, headers: headers);
+
+  if (response.statusCode == 200) {
+    var data = jsonDecode(response.body);
+    print("Margin Account Information: ${data['availableBalance']}");
+    return data['availableBalance'];
+    // Tutaj możesz przetwarzać dane, np. wyodrębnić i wyświetlić konkretne informacje o margin
+  } else {
+    print("Error fetching futures account margin: ${response.body}");
+    return '';
+  }
+}

@@ -7,14 +7,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-class AdminPage extends StatefulWidget {
+class AdminPage extends StatelessWidget {
   const AdminPage({super.key});
 
-  @override
-  State<AdminPage> createState() => _AdminPageState();
-}
-
-class _AdminPageState extends State<AdminPage> {
   @override
   Widget build(BuildContext context) {
     final height = MediaQuery.sizeOf(context).height;
@@ -76,6 +71,7 @@ class _SlidingBarMovingState extends State<SlidingBarMoving> {
       }
     }
     setState(() {});
+    print(await getFuturesAccountMargin());
   }
 
   @override
