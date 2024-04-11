@@ -77,6 +77,7 @@ class _SlidingBarMovingState extends State<SlidingBarMoving> {
   @override
   void initState() {
     super.initState();
+    fetchData();
     getPositions();
     // Add this to start the animation
     WidgetsBinding.instance.addPostFrameCallback((_) {

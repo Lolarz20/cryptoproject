@@ -320,3 +320,22 @@ Future<String> getFuturesAccountMargin() async {
     return '';
   }
 }
+
+void fetchData() async {
+  try {
+    final url = Uri.parse('https://europe-central2-cryptoprojectriddep.cloudfunctions.net/binanceAPIRequest');
+    final response = await http.post(url);
+
+    print(response.body);
+
+    if (response.statusCode == 200) {
+      // Jeśli serwer zwrócił odpowiedź "OK", parsujemy ciało odpowiedzi
+      print("Dane zaktualizowane pomyślnie: ${response.body}");
+    } else {
+      // Jeśli serwer nie zwrócił odpowiedzi "OK", wyrzucamy wyjątek
+      print("Nie udało się zaktualizować danych. Kod odpowiedzi: ${response.statusCode}");
+    }
+  } catch (e) {
+    print("Wyjątek podczas wywoływania funkcji: $e");
+  }
+}
