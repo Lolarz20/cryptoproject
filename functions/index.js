@@ -2,6 +2,7 @@ const cors = require('cors')({origin: true}); // Dodaj tę linię
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const fetch = require('node-fetch');
+const axios = require('axios');
 
 admin.initializeApp({
   credential: admin.credential.cert({
@@ -19,108 +20,88 @@ admin.initializeApp({
   })
 });
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 const db = admin.firestore();
 
-function someAsyncFunction() {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      resolve('Udało się! To jest symulowany wynik asynchronicznej operacji.');
-    }, 2000); // Symulacja opóźnienia 2 sekundy
-  });
-}
+ exports.getMarketData = functions.https.onRequest(async (req, res) => {
+     cors(req, res, async () => {
+         try {
+             const proxyConfig = {
+                 host: 'brd.superproxy.io',
+                 port: 22225,
+                 auth: {
+                     username: 'brd-customer-hl_ff88772f-zone-datacenter_proxy1',
+                     password: 'xuqpbl6plke0'
+                 }
+             };
 
-function fetchBinanceData() {
-  const url = 'https://api.binance.com/api/v3/ticker/price';
-  // Zwraca Promise
-  return fetch(url).then(response => {
-    if (!response.ok) {
-      throw new Error(`API call failed with status: ${response.status}`);
-    }
-    return response.json(); // Parsuje i zwraca ciało odpowiedzi jako JSON
-  });
-}
+             const axiosInstance = axios.create({
+                 proxy: proxyConfig
+             });
 
-exports.binanceAPIRequest = functions.region('europe-central2').https.onRequest((request, response) => {
-    try {
-        const symbol = "BTCUSDT"; // Parametr zapytania, np. "BTCUSDT"
-        const endpoint = `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`;
+             // Predefiniowana lista symboli
+          const symbols = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'SHIB', 'BCH', 'DOT', 'TRX', 'LINK', 'MATIC', 'NEAR', 'ICP', 'LTC', 'UNI', 'DAI', 'APT', 'ETC', 'STX', 'FIL', 'ATOM', 'ARB', 'XLM', 'IMX', 'RNDR', 'HBAR', 'VET', 'GRT', 'MKR', 'OP', 'INJ', 'THETA', 'FTM', 'RUNE', 'XMR', 'AAVE', 'FLOW', 'NEO', 'EOS']; // Lista symboli do obliczenia RSI
 
-        fetch(endpoint)
-            .then(res => res.json())
-            .then(data => {
-                // Sprawdzenie, czy odpowiedź zawiera błąd
-                if (data.code) {
-                    response.status(400).send({ error: 'Error occurred while fetching data from Binance API' });
-                } else {
-                    // Jeśli wszystko jest w porządku, zwróć dane
-                    response.status(200).send(data);
-                }
-            })
-            .catch(error => {
-                console.error('Error occurred:', error);
-                response.status(500).send({ error: 'Internal server error' });
-            });
-    } catch (error) {
-        console.error('Error occurred:', error);
-        response.status(500).send({ error: 'Internal server error' });
-    }
-});
+             const rsiData = {};
+             const smaData = {};
 
-// Określenie regionu funkcji
-exports.binanceAPIRequest.region = 'europe-west1';
+             for (const symbol of symbols) {
+                 try {
+                     const closingPricesRSI = await fetchHistoricalDataRSI(symbol, axiosInstance);
+                     const closingPricesSMA = await fetchHistoricalDataSMA(symbol, axiosInstance);
+                     const rsi = calculateRSI(closingPricesRSI);
+                     const sma = calculateSMA(closingPricesSMA);
 
-//exports.updateCryptoData = functions.region('europe-west1').https.onRequest(async (request, response) => {
-//           cors (request, response, async () => {
-//               // Tutaj umieść logikę swojej funkcji
-//                    fetchBinanceData().then(data => {
-//                        // Wysyła dane JSON otrzymane z API Binance jako odpowiedź HTTP
-//                        response.send(data);
-//                      }).catch(error => {
-//
-//                        response.send(error);
-//                      });
-//             });
-//
-// //const symbols = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'SHIB', 'BCH', 'DOT', 'TRX', 'LINK', 'MATIC', 'NEAR', 'ICP', 'LTC', 'UNI', 'DAI', 'APT', 'ETC', 'STX', 'FIL', 'ATOM', 'ARB', 'XLM', 'IMX', 'RNDR', 'HBAR', 'VET', 'GRT', 'MKR', 'OP', 'INJ', 'THETA', 'FTM', 'RUNE', 'XMR', 'AAVE', 'FLOW', 'NEO', 'EOS'];
-////     try {
-////       for (const symbol of symbols) {
-////         // Fetch historical data
-////         const urlRSI = `https://api.binance.com/api/v3/klines?symbol=${symbol}USDT&interval=1d&limit=59`;
-////         const responseRSI = await fetch(urlRSI);
-////         const dataRSI = await responseRSI.json();
-////         const closingPricesRSI = dataRSI.map(kline => parseFloat(kline[4]));
-////
-////         const urlSMA = `https://api.binance.com/api/v3/klines?symbol=${symbol}USDT&interval=1d&limit=200`;
-////         const responseSMA = await fetch(urlSMA);
-////         const dataSMA = await responseSMA.json();
-////         const closingPricesSMA = dataSMA.map(kline => parseFloat(kline[4]));
-////
-////         // Calculate RSI
-////         let gains = 0, losses = 0;
-////         for (let i = 1; i < closingPricesRSI.length; i++) {
-////             const diff = closingPricesRSI[i] - closingPricesRSI[i - 1];
-////             if (diff >= 0) gains += diff;
-////             else losses -= diff;
-////         }
-////         const averageGain = gains / 14;
-////         const averageLoss = losses / 14;
-////         const rs = averageGain / averageLoss;
-////         const rsi = 100 - (100 / (1 + rs));
-////
-////         // Calculate SMA
-////         const sum = closingPricesSMA.reduce((acc, price) => acc + price, 0);
-////         const sma = sum / closingPricesSMA.length;
-////
-////         // Update Firestore
-////         await db.collection('rsi').doc('rsi').set({symbol: rsi }, { merge: true });
-////         await db.collection('sma').doc('sma').set({symbol: sma }, { merge: true });
-////       }
-////
-////       response.json({ status: 'success', message: 'Dane RSI i SMA zostały zaktualizowane.' });
-////     } catch (error) {
-////       console.error('Błąd:', error);
-////       response.status(500).json({ status: 'error', message: 'Wystąpił błąd podczas aktualizacji danych.' });
-////     }
-//
-//});
+                     rsiData[symbol] = rsi;
+                     smaData[symbol] = sma;
+                 } catch (error) {
+                     console.error(`Błąd przy pobieraniu danych dla ${symbol}:`, error);
+                 }
+             }
+
+             await db.collection('rsi').doc('rsi').set(rsiData, { merge: true });
+             await db.collection('sma').doc('sma').set(smaData, { merge: true });
+
+             res.status(200).send({ rsiData, smaData });
+         } catch (error) {
+             console.error('Błąd podczas pobierania informacji o giełdzie:', error);
+             res.status(500).send('Nie można pobrać informacji o giełdzie');
+         }
+     });
+ });
+
+ async function fetchHistoricalDataRSI(symbol, axiosInstance, interval = '1m', limit = 59) {
+     const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}USDT&interval=${interval}&limit=${limit}`;
+     const response = await axiosInstance.get(url);
+     return response.data.map(kline => parseFloat(kline[4])); // Cena zamknięcia jest na 4 pozycji w każdym kline
+ }
+
+ async function fetchHistoricalDataSMA(symbol, axiosInstance, interval = '1m', limit = 200) {
+     const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}USDT&interval=${interval}&limit=${limit}`;
+     const response = await axiosInstance.get(url);
+     return response.data.map(kline => parseFloat(kline[4])); // Cena zamknięcia jest na 4 pozycji w każdym kline
+ }
+
+ function calculateRSI(closingPrices) {
+     let gains = 0, losses = 0;
+     for (let i = 1; i < closingPrices.length; i++) {
+         const diff = closingPrices[i] - closingPrices[i - 1];
+         if (diff >= 0) gains += diff;
+         else losses -= diff;
+     }
+     const averageGain = gains / 14;
+     const averageLoss = losses / 14;
+     const rs = averageGain / averageLoss;
+     const rsi = 100 - (100 / (1 + rs));
+     return rsi;
+ }
+
+ function calculateSMA(closingPrices, period = 200) {
+     if (closingPrices.length < period) {
+         throw new Error("Nie ma wystarczającej liczby danych do obliczenia SMA.");
+     }
+     const sum = closingPrices.slice(-period).reduce((acc, price) => acc + price, 0);
+     return sum / period;
+ }
 
