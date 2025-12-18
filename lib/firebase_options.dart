@@ -53,7 +53,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDSA2zfkLxKRSs2ep6gU2noqL9ur-ffUEY',
+    apiKey: '', // API Key deprecated
     appId: '1:293475607771:web:b8f82a75ce2ee98162d8fe',
     messagingSenderId: '293475607771',
     projectId: 'cryptoprojectriddep',

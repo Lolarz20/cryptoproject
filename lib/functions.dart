@@ -3,8 +3,8 @@ import 'package:crypto/crypto.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 
-String apiKey = '097941fec6ce719b0f177ce6f614d1b050c3dd9aa7cebccd6d28ada3b205acd0';
-String apiSecret = '7b033f039d6158bad616cf1f9dd19ede75c697b0ba72cce2dd4e783a86ce35d6';
+String apiKey = ''; // API Key deprecated
+String apiSecret = ''; // API Key deprecated
 
 Future<List<String>> getFuturesSymbols() async {
   const String url = 'https://fapi.binance.com/fapi/v1/exchangeInfo';
